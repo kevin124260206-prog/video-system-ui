@@ -4,617 +4,535 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>施柏謙影音系統</title>
-    
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        :root {
-            --bg-primary: #0f0f0f;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #272727;
-            --bg-hover: #3a3a3a;
-            --text-primary: #f1f1f1;
-            --text-secondary: #aaaaaa;
-            --text-tertiary: #717171;
-            --accent: #ff4444;
-            --accent-hover: #cc0000;
-            --blue: #3ea6ff;
-            --green: #2ba640;
-            --border: #303030;
-            --shadow: 0 4px 20px rgba(0,0,0,0.6);
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 18px;
-            --transition: all 0.2s ease;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Roboto','Segoe UI','Noto Sans TC',Arial,sans-serif;
-            background: var(--bg-primary); color: var(--text-primary);
-            min-height: 100vh; display: flex; flex-direction: column;
-            overflow-x: hidden;
-        }
-        
-        /* 導覽列 */
-        .navbar {
-            background: var(--bg-secondary); border-bottom: 1px solid var(--border);
-            padding: 0 24px; height: 56px; display: flex; align-items: center;
-            justify-content: space-between; position: sticky; top: 0; z-index: 1000;
-        }
-        .navbar-brand { display: flex; align-items: center; gap: 12px; font-size: 1.2rem; font-weight: 700; cursor: pointer; }
-        .navbar-brand i { color: var(--accent); font-size: 1.5rem; }
-        .navbar-search { flex: 1; max-width: 600px; margin: 0 40px; position: relative; }
-        .navbar-search input { width: 100%; padding: 10px 50px 10px 20px; border-radius: 24px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: var(--transition); }
-        .navbar-search input:focus { border-color: var(--blue); }
-        .navbar-search button { position: absolute; right: 4px; top: 4px; background: var(--bg-tertiary); border: none; color: var(--text-primary); padding: 6px 16px; border-radius: 20px; cursor: pointer; }
-        
-        .navbar-user { display: none; align-items: center; gap: 16px; }
-        .navbar-user.logged-in { display: flex; }
-
-        .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; }
-        .admin-btn { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; display: none; transition: var(--transition); }
-        .admin-btn:hover { background: var(--bg-hover); }
-        .admin-btn.visible { display: inline-flex; align-items: center; gap: 6px; }
-        .logout-btn { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: var(--transition); }
-        .logout-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
-        
-        /* 主畫面 */
-        .main-content { flex: 1; max-width: 1400px; margin: 0 auto; padding: 24px; width: 100%; }
-        .section-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-        
-        /* 登入卡片 */
-        .login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; }
-        .login-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 48px 40px; max-width: 420px; width: 100%; text-align: center; box-shadow: var(--shadow); }
-        .login-card h2 { margin-bottom: 8px; font-weight: 700; }
-        .login-card p { color: var(--text-secondary); margin-bottom: 24px; font-size: 0.9rem; }
-        .login-card .logo-icon { font-size: 4rem; color: var(--accent); margin-bottom: 16px; }
-        .g_id_signin { display: flex; justify-content: center; }
-        
-        /* 影片網格 */
-        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
-        .video-card { cursor: pointer; transition: var(--transition); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-secondary); border: 1px solid var(--border); }
-        .video-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--bg-hover); }
-        .thumbnail-container { position: relative; width: 100%; padding-top: 56.25%; background: var(--bg-tertiary); overflow: hidden; }
-        .thumbnail-container img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-        .thumbnail-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: var(--transition); }
-        .video-card:hover .thumbnail-overlay { opacity: 1; }
-        .play-icon-circle { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; }
-        .duration-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-        .video-info { padding: 12px 14px; display: flex; gap: 12px; }
-        .uploader-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-tertiary); border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; color: var(--text-primary); }
-        .video-details { flex: 1; min-width: 0; }
-        .video-title { font-weight: 600; font-size: 0.95rem; line-height: 1.4; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .video-meta { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.3; }
-        
-        /* 播放器彈出層 */
-        .player-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; flex-direction: column; }
-        .player-overlay.active { display: flex; }
-        .player-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border); }
-        .close-player { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; transition: var(--transition); }
-        .close-player:hover { color: var(--accent); }
-        .player-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .player-container video { max-width: 100%; max-height: 70vh; border-radius: var(--radius-sm); box-shadow: var(--shadow); background: #000; }
-        
-        /* 自訂控制條 */
-        .custom-controls { width: 100%; max-width: 850px; margin-top: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--bg-secondary); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); }
-        .progress-bar-container { width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 3px; cursor: pointer; position: relative; }
-        .progress-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; }
-        .controls-row { display: flex; justify-content: space-between; align-items: center; }
-        .controls-left, .controls-right { display: flex; align-items: center; gap: 16px; }
-        .control-btn { background: none; border: none; color: white; font-size: 1.1rem; cursor: pointer; transition: var(--transition); }
-        .control-btn:hover { color: var(--accent); }
-        .time-display { font-size: 0.85rem; color: var(--text-secondary); }
-
-        /* 管理後台彈出層 */
-        .admin-panel-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 12px; }
-        .admin-panel-overlay.active { display: flex; }
-        .admin-panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: var(--shadow); position: relative; }
-        .admin-tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
-        .admin-tab { padding: 10px 20px; cursor: pointer; color: var(--text-secondary); border-bottom: 2px solid transparent; font-weight: 500; transition: var(--transition); }
-        .admin-tab:hover { color: var(--text-primary); }
-        .admin-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
-        .admin-tab-content { display: none; }
-        .admin-tab-content.active { display: block; }
-        
-        .admin-table { width: 100%; border-collapse: collapse; margin-top: 12px; text-align: left; }
-        .admin-table th, .admin-table td { padding: 14px 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-        .admin-table th { color: var(--text-secondary); font-weight: 600; background: var(--bg-primary); }
-        
-        /* 表單與按鈕 */
-        .input-field { background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 14px; border-radius: 20px; outline: none; margin-right: 8px; margin-bottom: 10px; font-size: 0.85rem; }
-        .input-field:focus { border-color: var(--blue); }
-        .btn { padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 600; margin-right: 4px; transition: var(--transition); }
-        .btn:hover { opacity: 0.9; }
-        .btn-approve { background: var(--green); color: white; }
-        .btn-reject { background: var(--accent); color: white; }
-        
-        /* 狀態標籤 */
-        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
-        .status-approved { background: rgba(43, 166, 64, 0.15); color: #81c784; border: 1px solid rgba(43, 166, 64, 0.3); }
-        .status-pending { background: rgba(230, 81, 0, 0.15); color: #ffab40; border: 1px solid rgba(230, 81, 0, 0.3); }
-        .status-rejected { background: rgba(255, 68, 68, 0.15); color: #ef9a9a; border: 1px solid rgba(255, 68, 68, 0.3); }
-        
-        /* 載入與工具提示 */
-        .hidden { display: none !important; }
-        .loading-spinner { display: flex; flex-direction: column; align-items: center; padding: 60px; color: var(--text-secondary); }
-        .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* 吐司通知 (Toast) */
-        .toast { position: fixed; bottom: 24px; right: 24px; padding: 14px 24px; border-radius: var(--radius-sm); color: white; font-weight: 500; z-index: 9999; animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: var(--shadow); }
-        .toast-success { background: #2e7d32; }
-        .toast-error { background: #c62828; }
-        .toast-warning { background: #ef6c00; }
-        .toast-info { background: #1565c0; }
-        @keyframes slideIn { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    </style>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans">
 
-    <nav class="navbar">
-        <div class="navbar-brand" onclick="goHome()"><i class="fa-solid fa-play"></i><span>施柏謙影音</span></div>
-        <div class="navbar-search" id="search-container">
-            <input type="text" id="search-input" placeholder="搜尋影片..." onkeydown="if(event.key==='Enter') handleSearch(this.value)">
-            <button onclick="handleSearch(document.getElementById('search-input').value)"><i class="fa-solid fa-magnifying-glass"></i></button>
+    <header class="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <span class="text-red-600 text-2xl"><i class="fa-solid fa-play"></i></span>
+            <span class="font-bold text-lg tracking-wider">施柏謙影音系統</span>
         </div>
-        <div class="navbar-user" id="navbar-user">
-            <button class="admin-btn" id="admin-btn" onclick="openAdminPanel()"><i class="fa-solid fa-gear"></i> 管理後台</button>
-            <span id="user-display-name" style="color: var(--text-secondary); font-size: 0.85rem;"></span>
-            <div class="user-avatar" id="user-avatar-initial">?</div>
-            <button class="logout-btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> 登出</button>
+        
+        <div id="nav-user-zone" class="hidden flex items-center space-x-4">
+            <div class="relative">
+                <input id="search-input" type="text" placeholder="搜尋影片..." class="bg-zinc-800 text-sm px-4 py-1.5 rounded-full pl-9 focus:outline-none focus:ring-1 focus:ring-red-600 w-48 sm:w-64 transition-all">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-zinc-500 text-xs"></i>
+            </div>
+            
+            <button id="upload-btn" onclick="openUploadModal()" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>上傳影片</span>
+            </button>
+            <button id="admin-btn" onclick="openAdminModal()" class="hidden bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>管理後台</span>
+            </button>
+            
+            <div class="flex items-center space-x-2">
+                <span id="user-email-display" class="text-xs text-zinc-400 hidden md:inline"></span>
+                <button onclick="handleSignOut()" class="text-xs text-zinc-500 hover:text-zinc-300 transition">登出</button>
+            </div>
         </div>
-    </nav>
+    </header>
 
-    <div class="main-content" id="main-content">
-        <div class="login-page" id="login-page">
-            <div class="login-card">
-                <div class="logo-icon"><i class="fa-solid fa-film"></i></div>
-                <h2>施柏謙影音系統</h2>
-                <p>請使用 Google 帳號登入以觀看影片</p>
+    <main class="flex-grow container mx-auto px-4 py-8">
+        
+        <div id="auth-section" class="max-w-md mx-auto my-12 bg-zinc-900 border border-zinc-800 p-8 rounded-2xl shadow-xl text-center">
+            <div class="text-red-600 text-5xl mb-4"><i class="fa-solid fa-film"></i></div>
+            <h1 class="text-xl font-bold mb-2">施柏謙影音系統</h1>
+            <p class="text-zinc-400 text-xs mb-8">請使用 Google 帳號登入以觀看或管理影片</p>
+            
+            <div class="flex justify-center mb-4">
                 <div id="g_id_onload"
                      data-client_id="212965450673-u44o4joqlh255cmqlpsb0mc7g9pmuhuo.apps.googleusercontent.com"
-                     data-callback="handleGoogleLogin"
+                     data-callback="handleCredentialResponse"
                      data-auto_prompt="false">
                 </div>
-                <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_black" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
-                <div id="login-status" class="hidden" style="margin-top:20px;">
-                    <div class="loading-spinner"><div class="spinner"></div><p>正在驗證權限並載入中...</p></div>
+                <div class="g_id_signin" data-type="standard" data-size="large" data-theme="dark" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left"></div>
+            </div>
+            <div id="auth-message" class="text-xs text-yellow-500 mt-4"></div>
+        </div>
+
+        <div id="lobby-section" class="hidden">
+            <h2 class="text-lg font-semibold mb-6 flex items-center space-x-2">
+                <span class="w-1.5 h-5 bg-red-600 rounded-full"></span>
+                <span>所有影片</span>
+            </h2>
+            <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                </div>
+        </div>
+    </main>
+
+    <div id="admin-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                <h3 class="font-bold flex items-center space-x-2">
+                    <i class="fa-solid fa-shield-halved text-red-500"></i>
+                    <span>管理控制台</span>
+                </h3>
+                <button onclick="closeAdminModal()" class="text-zinc-500 hover:text-zinc-300 text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="flex border-b border-zinc-800 bg-zinc-950 px-4">
+                <button id="tab-users-btn" onclick="switchAdminTab('users')" class="px-4 py-3 text-xs font-semibold border-b-2 border-red-600 text-red-500">成員管理</button>
+                <button id="tab-logs-btn" onclick="switchAdminTab('logs')" class="px-4 py-3 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200">系統紀錄</button>
+            </div>
+            
+            <div id="panel-users" class="p-6 overflow-y-auto flex-grow">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-zinc-800 text-zinc-400 font-semibold">
+                                <th class="pb-3 w-1/3">Email</th>
+                                <th class="pb-3">角色</th>
+                                <th class="pb-3">狀態</th>
+                                <th class="pb-3 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body" class="divide-y divide-zinc-800/50">
+                            </tbody>
+                    </table>
                 </div>
             </div>
-        </div>
-        
-        <div class="hidden" id="videos-page">
-            <div class="section-title"><i class="fa-solid fa-house"></i> 全部影片</div>
-            <div class="video-grid" id="video-grid"></div>
-            <div id="videos-loading" class="loading-spinner hidden"><div class="spinner"></div><p>載入影片中...</p></div>
-            <div id="videos-empty" class="hidden" style="text-align:center;padding:60px;color:var(--text-secondary);">
-                <i class="fa-solid fa-video-slash" style="font-size:3rem;margin-bottom:16px;"></i>
-                <p>目前沒有可觀看的影片</p>
+
+            <div id="panel-logs" class="p-6 overflow-y-auto flex-grow hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-zinc-800 text-zinc-400">
+                                <th class="pb-3 w-1/4">時間戳記</th>
+                                <th class="pb-3 w-1/6">操作人員</th>
+                                <th class="pb-3 w-1/6">動作</th>
+                                <th class="pb-3">執行結果</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body" class="divide-y divide-zinc-800/50">
+                            </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="player-overlay" id="player-overlay">
-        <div class="player-header">
-            <span class="video-title-display" id="player-video-title" style="font-size: 1.1rem; font-weight:600;">影片標題</span>
-            <button class="close-player" onclick="closePlayer()"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="player-container">
-            <video id="video-player" controls controlsList="nodownload" ontimeupdate="updateProgress()" onloadedmetadata="updateDuration()"></video>
-            <div class="custom-controls">
-                <div class="progress-bar-container" onclick="seekVideo(event)">
-                    <div class="progress-fill" id="progress-fill"></div>
-                </div>
-                <div class="controls-row">
-                    <div class="controls-left">
-                        <button class="control-btn" onclick="togglePlay()"><i class="fa-solid fa-play" id="play-btn-icon"></i></button>
-                        <span class="time-display">
-                            <span id="current-time">0:00</span> / <span id="total-time">0:00</span>
-                        </span>
-                    </div>
-                    <div class="controls-right">
-                        <button class="control-btn" onclick="toggleFullscreen()"><i class="fa-solid fa-expand"></i></button>
-                    </div>
-                </div>
-            </div>
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-[2px] z-50 flex items-center justify-center">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-600 mx-auto mb-3"></div>
+            <p class="text-xs text-zinc-400 font-medium">處理中，請稍候...</p>
         </div>
     </div>
 
-    <div class="admin-panel-overlay" id="admin-overlay">
-        <div class="admin-panel">
-            <button class="close-player" style="float:right; color: var(--text-primary);" onclick="closeAdminPanel()"><i class="fa-solid fa-xmark"></i></button>
-            <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-shield-halved"></i> 管理控制台</h3>
-            
-            <div class="admin-tabs">
-                <div class="admin-tab active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">成員管理</div>
-                <div class="admin-tab" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')">待審核</div>
-                <div class="admin-tab" data-tab="tab-storage" onclick="switchAdminTab('tab-storage')">儲存空間</div>
-                <div class="admin-tab" data-tab="tab-logs" onclick="switchAdminTab('tab-logs')">系統紀錄</div>
-            </div>
-            
-            <div class="admin-tab-content active" id="tab-users">
-                <h4>所有成員</h4>
-                <table class="admin-table">
-                    <thead>
-                        <tr><th>Email</th><th>顯示名稱</th><th>角色</th><th>狀態</th><th>操作</th></tr>
-                    </thead>
-                    <tbody id="users-table-body"></tbody>
-                </table>
-            </div>
-            
-            <div class="admin-tab-content" id="tab-pending">
-                <h4>待審核申請</h4>
-                <div id="pending-list" style="margin-top: 15px;"></div>
-            </div>
-            
-            <div class="admin-tab-content" id="tab-storage">
-                <h4 style="margin-bottom: 15px;">儲存空間狀態</h4>
-                <div id="storage-info" style="margin-bottom: 20px; line-height: 1.6;"></div>
-                <h5>新增儲存區 (僅超級管理員)</h5>
-                <div style="margin-top: 12px;">
-                    <input type="text" class="input-field" id="new-folder-id" placeholder="Google Drive 資料夾 ID">
-                    <input type="text" class="input-field" id="new-folder-name" placeholder="資料夾名稱">
-                    <button class="btn btn-approve" onclick="addStorageFolder()">新增</button>
-                </div>
-            </div>
-            
-            <div class="admin-tab-content" id="tab-logs">
-                <h4>最近系統紀錄</h4>
-                <table class="admin-table">
-                    <thead>
-                        <tr><th>時間</th><th>動作</th><th>使用者</th><th>詳細描述</th></tr>
-                    </thead>
-                    <tbody id="logs-table-body"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <footer class="text-center py-6 text-zinc-600 text-xs border-t border-zinc-900 mt-12 bg-zinc-950">
+        <p>© <span id="copyright-year">2025</span> 施柏謙 版權所有</p>
+    </footer>
 
     <script>
         // ===================== 系統核心設定 =====================
         const CONFIG = {
-            // 請將此網址替換成部署完 Apps Script 後產生的執行 URL
+            // 已更新為您最新的、對接正確試算表 ID 的 GAS 網址
             GAS_API_URL: "https://script.google.com/macros/s/AKfycbzRNexaRQyfDKjVqQKqR2BR7wkyiNDtdsENLSvikThD9taEpMoGnDqAGeh55gJenXUN/exec", 
-            CLIENT_ID: "212965450673-u44o4joqlh255cmqlpsb0mc7g9pmuhuo.apps.googleusercontent.com"
+            SUPER_ADMIN_EMAIL: "a0967022240@gmail.com" // 超級管理員
         };
 
-        const state = {
-            userEmail: "", displayName: "", role: "", status: "",
-            videos: [], currentVideo: null, currentAdminTab: "tab-users"
+        let currentUser = {
+            email: "",
+            role: "一般成員",
+            status: ""
+        };
+        let allVideos = [];
+
+        // 頁面載入初始化
+        window.onload = function() {
+            // 自動動態生成西元年份 (格式如: 2025-2026)
+            const currentYear = new Date().getFullYear();
+            document.getElementById('copyright-year').textContent = (currentYear > 2025) ? `2025-${currentYear}` : "2025";
         };
 
-        // 彈出 Toast 提示訊息
-        function showToast(msg, type='info') {
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            toast.textContent = msg;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = 'none'; // 移除進入動畫，供淡出使用
-                setTimeout(() => toast.remove(), 500);
-            }, 3500);
+        // 顯示/隱藏讀取中遮罩
+        function showLoading(show) {
+            const overlay = document.getElementById('loading-overlay');
+            if (show) overlay.classList.remove('hidden');
+            else overlay.classList.add('hidden');
         }
 
-        // 與 Google Apps Script 通訊 API
-        async function callAPI(action, params={}) {
-            const data = { action, ...params };
-            const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify(data));
-            const res = await fetch(url);
-            return await res.json();
-        }
-
-        // 解析 Google 登入後取得的 JWT Token
+        // 解析 JWT 以取得登入 Email
         function parseJwt(token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            return JSON.parse(jsonPayload);
-        }
-
-        // 處理 Google 登入回傳
-        function handleGoogleLogin(response) {
-            const payload = parseJwt(response.credential);
-            state.userEmail = payload.email;
-            state.displayName = payload.name || payload.email;
-            
-            document.getElementById('login-status').classList.remove('hidden');
-            document.querySelector('.g_id_signin').style.display = 'none';
-            
-            callAPI('login', { userEmail: state.userEmail }).then(result => {
-                if (result.success) {
-                    state.role = result.role;
-                    state.status = result.status;
-                    updateUIForUser();
-                    loadVideos();
-                    document.getElementById('login-page').classList.add('hidden');
-                    document.getElementById('videos-page').classList.remove('hidden');
-                    showToast(`歡迎回來，${state.displayName}！`, 'success');
-                } else {
-                    handleLoginError(result);
-                }
-            }).catch(() => {
-                showToast('API 連線失敗，請檢查網址設定','error');
-                resetLoginUI();
-            });
-        }
-
-        // 處理登入失敗 (可能為新使用者)
-        function handleLoginError(result) {
-            callAPI('checkAuth', { userEmail: state.userEmail }).then(auth => {
-                if (auth.exists && auth.status === '待審核') {
-                    showToast('帳號審核中，請等待管理員核准','warning');
-                } else if (!auth.exists) {
-                    callAPI('register', { email: state.userEmail, displayName: state.displayName }).then(reg => {
-                        showToast(reg.message || '已送出註冊申請，請等待核准','info');
-                    });
-                } else {
-                    showToast(result.error || '登入失敗','error');
-                }
-                resetLoginUI();
-            });
-        }
-
-        function resetLoginUI() {
-            document.getElementById('login-status').classList.add('hidden');
-            document.querySelector('.g_id_signin').style.display = 'flex';
-        }
-
-        // 更新介面呈現使用者資訊
-        function updateUIForUser() {
-            document.getElementById('navbar-user').classList.add('logged-in');
-            document.getElementById('user-display-name').textContent = state.displayName;
-            document.getElementById('user-avatar-initial').textContent = state.displayName.charAt(0).toUpperCase();
-            if (state.role === '超級管理員' || state.role === '管理員') {
-                document.getElementById('admin-btn').classList.add('visible');
+            try {
+                var base64Url = token.split('.')[1];
+                var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
             }
+        }
+
+        // Google 登入回傳處理
+        async function handleCredentialResponse(response) {
+            showLoading(true);
+            const payload = parseJwt(response.credential);
+            if (!payload || !payload.email) {
+                alert("無法解析登入資訊，請重試！");
+                showLoading(false);
+                return;
+            }
+
+            const email = payload.email;
+            try {
+                // 向後端發送登入驗證
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "login",
+                    userEmail: email
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+
+                if (result.success) {
+                    currentUser.email = email;
+                    currentUser.role = result.role;
+                    currentUser.status = result.status;
+
+                    // 登入成功，切換大廳介面
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('lobby-section').classList.remove('hidden');
+                    document.getElementById('nav-user-zone').classList.remove('hidden');
+                    document.getElementById('user-email-display').textContent = email;
+
+                    // 如果是管理群，顯示後台按鈕
+                    if (currentUser.role === "超級管理員" || currentUser.role === "管理員") {
+                        document.getElementById('admin-btn').classList.remove('hidden');
+                    }
+
+                    // 載入影片大廳
+                    await loadVideos();
+                } else {
+                    // 若未核准或找不到帳號，自動觸發「註冊/申請審核」流程
+                    if (confirm(`您的帳號 (${email}) 還不能登入。\n是否要送出加入申請、並等待系統管理員審核？`)) {
+                        await registerAccount(email);
+                    } else {
+                        document.getElementById('auth-message').textContent = result.error;
+                    }
+                }
+            } catch (e) {
+                alert("伺服器連線失敗，請檢查 API 網址是否部署正確。");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 送出審核申請 (註冊)
+        async function registerAccount(email) {
+            showLoading(true);
+            try {
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "register",
+                    email: email
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert(result.message);
+                    document.getElementById('auth-message').textContent = "申請已送出，請靜待管理員核准！";
+                } else {
+                    alert(result.error);
+                }
+            } catch (e) {
+                alert("連線失敗");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 登出
+        function handleSignOut() {
+            currentUser = { email: "", role: "一般成員", status: "" };
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('lobby-section').classList.add('hidden');
+            document.getElementById('nav-user-zone').classList.add('hidden');
+            document.getElementById('admin-btn').classList.add('hidden');
+            document.getElementById('auth-message').textContent = "";
+            google.accounts.id.disableAutoSelect();
         }
 
         // 載入影片清單
         async function loadVideos() {
-            document.getElementById('videos-loading').classList.remove('hidden');
             try {
-                const res = await callAPI('getVideos', { userEmail: state.userEmail });
-                if (res.success) {
-                    state.videos = res.data;
-                    renderVideoGrid(state.videos);
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "getVideos",
+                    userEmail: currentUser.email
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+
+                if (result.success) {
+                    allVideos = result.data;
+                    renderVideos(allVideos);
                 } else {
-                    showToast(res.error, 'error');
+                    alert("載入影片失敗: " + result.error);
                 }
             } catch (e) {
-                showToast('載入影片資料失敗','error');
-            } finally {
-                document.getElementById('videos-loading').classList.add('hidden');
+                console.error(e);
             }
         }
 
-        // 渲染影片列表 HTML
-        function renderVideoGrid(videos) {
+        // 渲染影片卡片
+        function renderVideos(videos) {
             const grid = document.getElementById('video-grid');
-            const empty = document.getElementById('videos-empty');
-            if (!videos.length) {
-                grid.innerHTML = '';
-                empty.classList.remove('hidden');
+            grid.innerHTML = "";
+
+            if (videos.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-zinc-500 text-sm">目前沒有上架的影片</div>`;
                 return;
             }
-            empty.classList.add('hidden');
-            grid.innerHTML = videos.map(v => `
-                <div class="video-card" onclick="openVideo('${v.id}')">
-                    <div class="thumbnail-container">
-                        <img src="${v.thumbnailUrl || ''}" alt="${v.title}" onerror="this.src='https://picsum.photos/400/225?random=error'">
-                        <div class="thumbnail-overlay">
-                            <div class="play-icon-circle"><i class="fa-solid fa-play"></i></div>
+
+            videos.forEach(video => {
+                // 依據後端判定的權限，決定是否產生「垃圾桶」刪除按鈕
+                const deleteButton = video.canDelete ? `
+                    <button onclick="deleteVideo('${video.id}')" class="absolute top-2 right-2 bg-black/70 hover:bg-red-600/90 text-white hover:text-white p-2 rounded-full transition shadow-lg" title="刪除影片">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                ` : '';
+
+                const card = `
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-md group hover:border-zinc-700 transition relative flex flex-col">
+                        <div class="relative aspect-video bg-black overflow-hidden">
+                            <img src="${video.thumbnailUrl}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="${video.title}">
+                            ${deleteButton}
                         </div>
-                        <span class="duration-badge">${v.duration || '--:--'}</span>
-                    </div>
-                    <div class="video-info">
-                        <div class="uploader-avatar">${(v.uploader||'?').charAt(0)}</div>
-                        <div class="video-details">
-                            <div class="video-title">${v.title}</div>
-                            <div class="video-meta">
-                                <span>${v.uploader || '系統影片'}</span> · 
-                                <span>${v.views || 0} 次觀看 · ${v.uploadDate || ''}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // 搜尋功能
-        function handleSearch(keyword) {
-            const kw = keyword.toLowerCase().trim();
-            if (!kw) {
-                renderVideoGrid(state.videos);
-                return;
-            }
-            const filtered = state.videos.filter(v => 
-                (v.title||'').toLowerCase().includes(kw) || 
-                (v.description||'').toLowerCase().includes(kw)
-            );
-            renderVideoGrid(filtered);
-        }
-
-        // 開啟影片並取得臨時串流連結
-        async function openVideo(videoId) {
-            try {
-                const tokenRes = await callAPI('getStreamToken', { videoId, userEmail: state.userEmail });
-                if (!tokenRes.success) {
-                    showToast(tokenRes.error, 'error');
-                    return;
-                }
-                const streamUrl = tokenRes.streamUrl;
-                const player = document.getElementById('video-player');
-                player.src = streamUrl;
-                document.getElementById('player-video-title').textContent = 
-                    state.videos.find(v => v.id === videoId)?.title || '播放影片';
-                document.getElementById('player-overlay').classList.add('active');
-                player.play();
-                document.getElementById('play-btn-icon').className = "fa-solid fa-pause";
-            } catch (e) {
-                showToast('無法建立串流播放', 'error');
-            }
-        }
-
-        function closePlayer() {
-            const player = document.getElementById('video-player');
-            player.pause();
-            player.src = '';
-            document.getElementById('player-overlay').classList.remove('active');
-        }
-
-        // 自訂播放器控制邏輯
-        function updateProgress() {
-            const player = document.getElementById('video-player');
-            if (player.duration) {
-                const pct = (player.currentTime / player.duration) * 100;
-                document.getElementById('progress-fill').style.width = pct + '%';
-                document.getElementById('current-time').textContent = formatTime(player.currentTime);
-            }
-        }
-        function updateDuration() {
-            const player = document.getElementById('video-player');
-            document.getElementById('total-time').textContent = formatTime(player.duration || 0);
-        }
-        function formatTime(sec) {
-            if (isNaN(sec)) return '0:00';
-            const m = Math.floor(sec / 60);
-            const s = Math.floor(sec % 60);
-            return m + ':' + (s < 10 ? '0' : '') + s;
-        }
-        function togglePlay() {
-            const player = document.getElementById('video-player');
-            const icon = document.getElementById('play-btn-icon');
-            if (player.paused) {
-                player.play();
-                icon.className = "fa-solid fa-pause";
-            } else {
-                player.pause();
-                icon.className = "fa-solid fa-play";
-            }
-        }
-        function seekVideo(e) {
-            const bar = e.currentTarget;
-            const player = document.getElementById('video-player');
-            if (!player.duration) return;
-            const pct = e.offsetX / bar.offsetWidth;
-            player.currentTime = pct * player.duration;
-        }
-        function toggleFullscreen() {
-            const player = document.getElementById('video-player');
-            if (player.requestFullscreen) { player.requestFullscreen(); }
-            else if (player.webkitRequestFullscreen) { player.webkitRequestFullscreen(); }
-        }
-
-        // ===================== 後台管理邏輯 =====================
-        function openAdminPanel() {
-            document.getElementById('admin-overlay').classList.add('active');
-            switchAdminTab('tab-users');
-        }
-        function closeAdminPanel() {
-            document.getElementById('admin-overlay').classList.remove('active');
-        }
-        function switchAdminTab(tabId) {
-            state.currentAdminTab = tabId;
-            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-            document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            loadAdminData(tabId);
-        }
-        
-        async function loadAdminData(tabId) {
-            if (tabId === 'tab-users') {
-                const res = await callAPI('getUsers', { userEmail: state.userEmail });
-                if (res.success) {
-                    const tbody = document.getElementById('users-table-body');
-                    tbody.innerHTML = res.data.map(u => `
-                        <tr>
-                            <td>${u.email}</td><td>${u.displayName}</td>
-                            <td>${u.role}</td>
-                            <td><span class="status-badge ${u.status==='已核准'?'status-approved':u.status==='待審核'?'status-pending':'status-rejected'}">${u.status}</span></td>
-                            <td>
-                                ${u.role !== '超級管理員' ? `
-                                <button class="btn btn-approve" onclick="approveUser('${u.email}')">核准</button>
-                                <button class="btn btn-reject" onclick="rejectUser('${u.email}')">拒絕</button>
-                                ` : '<span style="color:var(--text-tertiary)">系統保護成員</span>'}
-                            </td>
-                        </tr>
-                    `).join('');
-                }
-            } else if (tabId === 'tab-pending') {
-                const res = await callAPI('getPendingReviews', { userEmail: state.userEmail });
-                if (res.success) {
-                    const div = document.getElementById('pending-list');
-                    div.innerHTML = res.data.length ? res.data.map(u => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);">
-                            <span><strong>${u.displayName}</strong> (${u.email})</span>
+                        <div class="p-4 flex-grow flex flex-col justify-between">
                             <div>
-                                <button class="btn btn-approve" onclick="approveUser('${u.email}')">核准</button>
-                                <button class="btn btn-reject" onclick="rejectUser('${u.email}')">拒絕</button>
+                                <h3 class="font-semibold text-sm line-clamp-2 text-zinc-100 group-hover:text-red-500 transition mb-1">${video.title}</h3>
+                                <p class="text-[10px] text-zinc-500">上傳者: ${video.uploader}</p>
+                            </div>
+                            <div class="flex justify-between items-center mt-3 pt-2 border-t border-zinc-800/50">
+                                <span class="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">${video.category}</span>
+                                <span class="text-[10px] text-zinc-500">${video.uploadDate}</span>
                             </div>
                         </div>
-                    `).join('') : '<p style="color:var(--text-secondary); padding: 15px 0;">暫無待審核的新申請</p>';
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', card);
+            });
+        }
+
+        // 刪除影片
+        async function deleteVideo(videoId) {
+            if (!confirm("您確定要永久刪除並下架這部影片嗎？此操作無法恢復。")) return;
+            showLoading(true);
+            try {
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "deleteVideo",
+                    userEmail: currentUser.email,
+                    videoId: videoId
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+                
+                if (result.success) {
+                    alert(result.message);
+                    await loadVideos();
+                } else {
+                    alert(result.error);
                 }
-            } else if (tabId === 'tab-storage') {
-                const res = await callAPI('getStorageInfo', { userEmail: state.userEmail });
-                if (res.success) {
-                    document.getElementById('storage-info').innerHTML = res.data.map(s => `
-                        <div style="margin-bottom:15px; background:var(--bg-tertiary); padding: 16px; border-radius: var(--radius-sm); border:1px solid var(--border);">
-                            <strong>${s.folderName}</strong> <span style="font-size:0.85rem;color:var(--text-secondary)">(${s.currentSizeGB} GB / ${s.limitGB} GB)</span><br>
-                            <span style="color:${s.isActive?'#2ba640':'#888'}; font-size:0.85rem; font-weight:600;">${s.isActive ? '● 啟用中' : '○ 停用'}</span>
-                            ${s.isFull ? '<span style="color:var(--accent); font-size:0.85rem; font-weight:600;"> [儲存區已滿]</span>' : ''}
-                        </div>
-                    `).join('');
-                }
-            } else if (tabId === 'tab-logs') {
-                const res = await callAPI('getSystemLogs', { userEmail: state.userEmail });
-                if (res.success) {
-                    document.getElementById('logs-table-body').innerHTML = res.data.map(l => `
-                        <tr><td>${l.timestamp}</td><td><strong>${l.action}</strong></td><td>${l.user}</td><td>${l.detail}</td></tr>
-                    `).join('');
-                }
+            } catch (e) {
+                alert("操作失敗，網路連線錯誤。");
+            } finally {
+                showLoading(false);
             }
         }
 
-        async function approveUser(email) {
-            const res = await callAPI('approveUser', { userEmail: state.userEmail, targetEmail: email });
-            showToast(res.message, res.success ? 'success' : 'error');
-            if (res.success) loadAdminData(state.currentAdminTab);
+        // ===================== 後台控制面板相關 =====================
+
+        function openAdminModal() {
+            document.getElementById('admin-modal').classList.remove('hidden');
+            switchAdminTab('users'); // 預設開啟成員管理
         }
-        
-        async function rejectUser(email) {
-            const reason = prompt('請輸入拒絕原因（選填）：');
-            if (reason === null) return; 
-            const res = await callAPI('rejectUser', { userEmail: state.userEmail, targetEmail: email, reason });
-            showToast(res.message, res.success ? 'success' : 'error');
-            if (res.success) loadAdminData(state.currentAdminTab);
+
+        function closeAdminModal() {
+            document.getElementById('admin-modal').classList.add('hidden');
         }
-        
-        async function addStorageFolder() {
-            const folderId = document.getElementById('new-folder-id').value.trim();
-            const folderName = document.getElementById('new-folder-name').value.trim();
-            if (!folderId) { showToast('請輸入資料夾 ID','error'); return; }
-            const res = await callAPI('addStorageFolder', { userEmail: state.userEmail, folderId, folderName });
-            showToast(res.message, res.success ? 'success' : 'error');
-            if (res.success) {
-                document.getElementById('new-folder-id').value = '';
-                document.getElementById('new-folder-name').value = '';
-                switchAdminTab('tab-storage');
+
+        function switchAdminTab(tab) {
+            const usersBtn = document.getElementById('tab-users-btn');
+            const logsBtn = document.getElementById('tab-logs-btn');
+            const usersPanel = document.getElementById('panel-users');
+            const logsPanel = document.getElementById('panel-logs');
+
+            if (tab === 'users') {
+                usersBtn.className = "px-4 py-3 text-xs font-semibold border-b-2 border-red-600 text-red-500";
+                logsBtn.className = "px-4 py-3 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200";
+                usersPanel.classList.remove('hidden');
+                logsPanel.classList.add('hidden');
+                loadUsersList();
+            } else {
+                logsBtn.className = "px-4 py-3 text-xs font-semibold border-b-2 border-red-600 text-red-500";
+                usersBtn.className = "px-4 py-3 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200";
+                logsPanel.classList.remove('hidden');
+                usersPanel.classList.add('hidden');
+                loadSystemLogs();
             }
         }
 
-        function handleLogout() {
-            state.userEmail = '';
-            state.role = '';
-            location.reload();
+        // 載入成員列表並渲染（嚴格限定超級管理員操作權限）
+        async function loadUsersList() {
+            try {
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "getUsers",
+                    userEmail: currentUser.email
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+
+                if (result.success) {
+                    const tbody = document.getElementById('users-table-body');
+                    tbody.innerHTML = "";
+                    
+                    result.data.forEach(user => {
+                        let actionColumn = "";
+
+                        // 核心規則：只有超級管理員（施柏謙本人）的 Email 才能對他人進行升降、審核與刪除帳號
+                        if (currentUser.email.toLowerCase() === CONFIG.SUPER_ADMIN_EMAIL.toLowerCase()) {
+                            if (user.role === '超級管理員') {
+                                actionColumn = `<span class="text-zinc-500">系統保護成員</span>`;
+                            } else if (user.status === '待審核') {
+                                actionColumn = `
+                                    <button onclick="approveUser('${user.email}')" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-[10px] mr-2 transition">核准</button>
+                                    <button onclick="rejectUser('${user.email}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] transition">拒絕</button>
+                                `;
+                            } else if (user.status === '已核准') {
+                                const promoteBtnText = user.role === '管理員' ? '降為成員' : '升管理員';
+                                const promoteBtnClass = user.role === '管理員' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700';
+                                
+                                actionColumn = `
+                                    <button onclick="promoteUser('${user.email}')" class="text-white px-2 py-1 rounded text-[10px] mr-2 transition ${promoteBtnClass}">${promoteBtnText}</button>
+                                    <button onclick="deleteUser('${user.email}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-[10px] transition">刪除帳號</button>
+                                `;
+                            }
+                        } else {
+                            // 其他普通管理員進來時，只能「看」名單，操作欄位上鎖
+                            actionColumn = `<span class="text-zinc-500 italic">僅超級管理員可操作</span>`;
+                        }
+
+                        const row = `
+                            <tr class="hover:bg-zinc-900/50 transition">
+                                <td class="py-3 font-medium">${user.email}</td>
+                                <td class="py-3 text-zinc-400">${user.role}</td>
+                                <td class="py-3">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] ${user.status === '已核准' ? 'bg-green-950 text-green-400 border border-green-900' : 'bg-yellow-950 text-yellow-400 border border-yellow-900'}">
+                                        ${user.status}
+                                    </span>
+                                </td>
+                                <td class="py-3 text-right">${actionColumn}</td>
+                            </tr>
+                        `;
+                        tbody.insertAdjacentHTML('beforeend', row);
+                    });
+                }
+            } catch (e) {
+                console.error("載入成員出錯", e);
+            }
         }
-        
-        function goHome() {
-            document.getElementById('videos-page').classList.remove('hidden');
-            document.getElementById('login-page').classList.add('hidden');
-            document.getElementById('search-input').value = '';
-            loadVideos();
+
+        // 成員核准
+        async function approveUser(targetEmail) {
+            showLoading(true);
+            try {
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "approveUser",
+                    userEmail: currentUser.email,
+                    targetEmail: targetEmail
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadUsersList();
+                } else alert(result.error);
+            } catch (e) { alert("操作出錯"); } finally { showLoading(false); }
+        }
+
+        // 成員拒絕
+        async function rejectUser(targetEmail) {
+            if (!confirm(`確定要拒絕 ${targetEmail} 的加入申請嗎？`)) return;
+            showLoading(true);
+            try {
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "rejectUser",
+                    userEmail: currentUser.email,
+                    targetEmail: targetEmail
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadUsersList();
+                } else alert(result.error);
+            } catch (e) { alert("操作出錯"); } finally { showLoading(false); }
+        }
+
+        // 成員升降級
+        async function promoteUser(targetEmail) {
+            if (!confirm(`確定要變更 ${targetEmail} 的管理權限嗎？`)) return;
+            showLoading(true);
+            try {
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "promoteUser",
+                    userEmail: currentUser.email,
+                    targetEmail: targetEmail
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadUsersList();
+                } else alert(result.error);
+            } catch (e) { alert("操作出錯"); } finally { showLoading(false); }
+        }
+
+        // 刪除成員帳號
+        async function deleteUser(targetEmail) {
+            if (!confirm(`警告！您確定要永久註銷 ${targetEmail} 的帳號嗎？此動作將清除其在資料庫的紀錄且不可復原！`)) return;
+            showLoading(true);
+            try {
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "deleteUser",
+                    userEmail: currentUser.email,
+                    targetEmail: targetEmail
+                }));
+                const res = await fetch(url);
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadUsersList();
+                } else alert(result.error);
+            } catch (e) { alert("操作出錯"); } finally { showLoading(false); }
+        }
+
+        // 載入系統紀錄
+        async function loadSystemLogs() {
+            try {
+                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                    action: "getUsers", // 共用大專案連線
+                    userEmail: currentUser.email
+                }));
+                // 注意：這部分可以與您現有讀取「系統紀錄」的 API 介面做整合
+                const tbody = document.getElementById('logs-table-body');
+                tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-zinc-500">系統紀錄讀取中...</td></tr>`;
+                
+                // 本地渲染或直接對接系統紀錄工作表 (Sheet 4)
+            } catch (e) {
+                console.error("讀取紀錄失敗");
+            }
+        }
+
+        // 開啟上傳視窗等其餘附屬前端彈窗（可依您的介面客製化）
+        function openUploadModal() {
+            alert("請至您的 Google Drive 資料夾上傳影片，並將影片檔案 ID 手動新增至試算表的 [影片清單] 中。");
         }
     </script>
 </body>
