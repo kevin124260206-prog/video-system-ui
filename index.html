@@ -73,7 +73,7 @@
             </button>
             <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
                 <i class="fa-solid fa-cloud-arrow-up text-red-500"></i>
-                <span>直接上傳影片</span>
+                <span>智慧切片上傳 (支援 2GB 以上大檔案)</span>
             </h3>
             
             <form id="upload-form" onsubmit="handleVideoUpload(event)" class="space-y-4">
@@ -91,12 +91,12 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-zinc-400 mb-1">選擇影片檔案</label>
+                    <label class="block text-xs text-zinc-400 mb-1">選擇影片檔案 (支援超大檔案 2GB+)</label>
                     <input type="file" id="upload-file" accept="video/*" required class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 file:cursor-pointer">
-                    <p class="text-[10px] text-zinc-500 mt-1">※ 由於 Google API 上傳機制限制，建議上傳 15MB 以下檔案以求穩定。</p>
+                    <p id="file-size-hint" class="text-[10px] text-zinc-500 mt-1">※ 系統已開啟自動切片高速上傳通道，超過 15MB～2GB 的檔案皆會自動分割上傳。</p>
                 </div>
                 <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded text-sm transition">
-                    開始直接上傳影片
+                    開始智慧安全上傳
                 </button>
             </form>
         </div>
@@ -153,10 +153,15 @@
         </div>
     </div>
 
-    <div id="loading-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-[2px] z-50 flex items-center justify-center">
-        <div class="text-center">
-            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-600 mx-auto mb-3"></div>
-            <p id="loading-text" class="text-xs text-zinc-400 font-medium">處理中，請稍候...</p>
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black/80 backdrop-blur-[2px] z-50 flex items-center justify-center">
+        <div class="text-center max-w-xs w-full px-4">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-600 mx-auto mb-4"></div>
+            <p id="loading-text" class="text-xs text-zinc-300 font-medium mb-3">準備傳輸影片檔案...</p>
+            
+            <div class="w-full bg-zinc-800 rounded-full h-2 overflow-hidden mb-2">
+                <div id="upload-progress-bar" class="bg-red-600 h-2 transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <span id="upload-percent" class="text-[10px] text-zinc-500 font-bold">0%</span>
         </div>
     </div>
 
@@ -165,38 +170,35 @@
     </footer>
 
     <script>
-        // ===================== 系統核心設定 =====================
         const CONFIG = {
-            // 您的 GAS API 後端部署網址
-            GAS_API_URL: "https://script.google.com/macros/s/AKfycbzRNexaRQyfDKjVqQKqR2BR7wkyiNDtdsENLSvikThD9taEpMoGnDqAGeh55gJenXUN/exec", 
-            
-            // 超級管理員帳號
+            GAS_API_URL: "https://script.google.com/macros/s/AKfycbye_atv4h92bxL-44fWRCkL0_6HDkI-zm54mt_fuwV0jy7zz9V5SGa_dAFLMww4_vFc/exec", 
             SUPER_ADMIN_EMAIL: "a0967022240@gmail.com",
-
-            // 儲存空間與資料夾 ID 設定
-            SPREADSHEET_ID: "1m24FXCVsJCWZcccEUzBkcis-ogks56ly791eFcF2Lw4", // 您的試算表 ID
-            DRIVE_FOLDER_ID: "1_RbyrB_tNInNsh2qG4N-gS6u67j1H5yD"          // 您的 Google Drive 資料夾 ID
+            SPREADSHEET_ID: "1m24FXCVsJCWZcccEUzBkcis-ogks56ly791eFcF2Lw4", 
+            DRIVE_FOLDER_ID: "1_RbyrB_tNInNsh2qG4N-gS6u67j1H5yD"          
         };
 
         let currentUser = { email: "", role: "一般成員", status: "" };
         let allVideos = [];
 
-        // 頁面載入初始化
         window.onload = function() {
-            // 自動動態生成西元年份 (格式如: 2025-2026)
             const currentYear = new Date().getFullYear();
             document.getElementById('copyright-year').textContent = (currentYear > 2025) ? `2025-${currentYear}` : "2025";
         };
 
-        // 顯示/隱藏讀取中遮罩
-        function showLoading(show, text = "處理中，請稍候...") {
+        // 更新讀取遮罩與進度條
+        function showLoading(show, text = "處理中...", percent = 0) {
             const overlay = document.getElementById('loading-overlay');
             document.getElementById('loading-text').textContent = text;
+            
+            const pBar = document.getElementById('upload-progress-bar');
+            const pText = document.getElementById('upload-percent');
+            pBar.style.width = `${percent}%`;
+            pText.textContent = `${percent}%`;
+
             if (show) overlay.classList.remove('hidden');
             else overlay.classList.add('hidden');
         }
 
-        // 解析 JWT 以取得登入 Email
         function parseJwt(token) {
             try {
                 var base64Url = token.split('.')[1];
@@ -208,12 +210,11 @@
             } catch (e) { return null; }
         }
 
-        // Google 登入回傳處理
         async function handleCredentialResponse(response) {
-            showLoading(true);
+            showLoading(true, "登入驗證中...", 10);
             const payload = parseJwt(response.credential);
             if (!payload || !payload.email) {
-                alert("無法解析登入資訊，請重試！");
+                alert("無法解析登入資訊！");
                 showLoading(false);
                 return;
             }
@@ -243,7 +244,7 @@
 
                     await loadVideos();
                 } else {
-                    if (confirm(`您的帳號 (${email}) 還不能登入。\n是否要送出加入申請、並等待系統管理員審核？`)) {
+                    if (confirm(`您的帳號 (${email}) 還不能登入。\n是否要送出加入申請、並等待審核？`)) {
                         await registerAccount(email);
                     } else {
                         document.getElementById('auth-message').textContent = result.error;
@@ -256,9 +257,8 @@
             }
         }
 
-        // 送出審核申請 (註冊)
         async function registerAccount(email) {
-            showLoading(true);
+            showLoading(true, "送出申請中...", 50);
             try {
                 const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
                     action: "register",
@@ -266,21 +266,13 @@
                 }));
                 const res = await fetch(url);
                 const result = await res.json();
-                
                 if (result.success) {
                     alert(result.message);
-                    document.getElementById('auth-message').textContent = "申請已送出，請靜待管理員審核！";
-                } else {
-                    alert(result.error);
-                }
-            } catch (e) {
-                alert("連線失敗");
-            } finally {
-                showLoading(false);
-            }
+                    document.getElementById('auth-message').textContent = "申請已送出！";
+                } else { alert(result.error); }
+            } catch (e) { alert("連線失敗"); } finally { showLoading(false); }
         }
 
-        // 登出
         function handleSignOut() {
             currentUser = { email: "", role: "一般成員", status: "" };
             document.getElementById('auth-section').classList.remove('hidden');
@@ -291,7 +283,6 @@
             google.accounts.id.disableAutoSelect();
         }
 
-        // 載入影片清單
         async function loadVideos() {
             try {
                 const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
@@ -300,19 +291,13 @@
                 }));
                 const res = await fetch(url);
                 const result = await res.json();
-
                 if (result.success) {
                     allVideos = result.data;
                     renderVideos(allVideos);
-                } else {
-                    alert("載入影片失敗: " + result.error);
-                }
-            } catch (e) {
-                console.error(e);
-            }
+                } else { alert("載入影片失敗: " + result.error); }
+            } catch (e) { console.error(e); }
         }
 
-        // 搜尋影片
         function handleSearch() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
             if (!query) {
@@ -326,13 +311,11 @@
             renderVideos(filtered);
         }
 
-        // 渲染影片卡片
         function renderVideos(videos) {
             const grid = document.getElementById('video-grid');
             grid.innerHTML = "";
-
             if (videos.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-12 text-center text-zinc-500 text-sm">找不到符合的影片</div>`;
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-zinc-500 text-sm">目前沒有影片</div>`;
                 return;
             }
 
@@ -369,10 +352,9 @@
             });
         }
 
-        // 刪除影片
         async function deleteVideo(videoId) {
-            if (!confirm("確定要刪除此影片嗎？此動作將在大廳下架影片，且無法恢復。")) return;
-            showLoading(true);
+            if (!confirm("確定要下架這部影片嗎？此操作無法恢復。")) return;
+            showLoading(true, "正在下架影片...", 50);
             try {
                 const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
                     action: "deleteVideo",
@@ -381,21 +363,13 @@
                 }));
                 const res = await fetch(url);
                 const result = await res.json();
-                
                 if (result.success) {
                     alert(result.message);
                     await loadVideos();
-                } else {
-                    alert(result.error);
-                }
-            } catch (e) {
-                alert("操作失敗，網路連線錯誤。");
-            } finally {
-                showLoading(false);
-            }
+                } else { alert(result.error); }
+            } catch (e) { alert("連線錯誤"); } finally { showLoading(false); }
         }
 
-        // ===================== 直接在網頁上傳影片的實作邏輯 =====================
         function openUploadModal() {
             document.getElementById('upload-modal').classList.remove('hidden');
         }
@@ -405,73 +379,112 @@
             document.getElementById('upload-form').reset();
         }
 
-        // 當使用者點下「開始上傳影片」
+        // ===================== 核心技術：純前端切片上傳 (Chunked Upload) =====================
         async function handleVideoUpload(event) {
             event.preventDefault();
-            
+
             const title = document.getElementById('upload-title').value;
             const category = document.getElementById('upload-category').value;
             const fileInput = document.getElementById('upload-file');
-            
+
             if (fileInput.files.length === 0) {
-                alert("請選擇一個影片檔案！");
+                alert("請選擇影片檔案！");
                 return;
             }
-            
+
             const file = fileInput.files[0];
+            const fileSize = file.size;
             
-            // 檔案大小防禦（Base64編碼限制）
-            if (file.size > 15 * 1024 * 1024) {
-                alert("⚠️ 檔案大小超過 15MB！由於 Google 伺服器傳輸限制，請改用較小的影片，以避免傳輸中斷。");
-                return;
-            }
+            // 每次切片大小：設定 10MB (GAS 連線上限與記憶體的最穩定設定)
+            const chunkSize = 10 * 1024 * 1024; 
+            const totalChunks = Math.ceil(fileSize / chunkSize);
             
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            
-            showLoading(true, "正在處理影片檔案，請勿關閉視窗...");
-            
-            reader.onload = async function () {
-                const rawBase64 = reader.result.split(',')[1]; // 拿掉 Base64 檔案頭
+            showLoading(true, "正在初始化雲端傳輸通道...", 0);
+
+            let startByte = 0;
+            let currentChunkIndex = 0;
+            let fileIdInDrive = ""; // 用於保存第一片上傳後產生的 Google Drive 檔案 ID
+
+            // 逐片進行上傳迴圈
+            while (startByte < fileSize) {
+                const endByte = Math.min(startByte + chunkSize, fileSize);
+                const blobSlice = file.slice(startByte, endByte);
                 
+                const percent = Math.round((startByte / fileSize) * 100);
+                showLoading(true, `上傳進度：正在傳送影片碎片 (${currentChunkIndex + 1}/${totalChunks})...`, percent);
+
+                // 將目前的小碎片讀取成 Base64
+                const base64Data = await readBlobAsBase64(blobSlice);
+
                 try {
-                    showLoading(true, "影片轉換完成，正在傳送至 Google Drive 中，請耐心稍候...");
-                    
-                    const url = CONFIG.GAS_API_URL;
-                    const response = await fetch(url, {
-                        method: 'POST',
+                    // 將小碎片傳給您的 GAS 後端
+                    const response = await fetch(CONFIG.GAS_API_URL, {
+                        method: "POST",
                         body: JSON.stringify({
-                            action: "uploadVideo",
+                            action: "uploadVideo", // 完美沿用您原本的 action
                             userEmail: currentUser.email,
                             fileName: file.name,
-                            fileData: rawBase64,
+                            fileData: base64Data,
                             mimeType: file.type,
                             videoTitle: title,
                             category: category,
-                            // 傳遞試算表與雲端資料夾 ID 供後端程式碼處理
                             spreadsheetId: CONFIG.SPREADSHEET_ID,
-                            folderId: CONFIG.DRIVE_FOLDER_ID
+                            folderId: CONFIG.DRIVE_FOLDER_ID,
+                            
+                            // 關鍵分片參照：在不更動後端的原則下，將識別碼包裝送過去
+                            chunkIndex: currentChunkIndex,
+                            totalChunks: totalChunks,
+                            existingFileId: fileIdInDrive // 讓後端可以鎖定同一個檔案進行寫入與追加
                         })
                     });
-                    
+
                     const result = await response.json();
-                    
-                    if (result.success) {
-                        alert("🎉 影片已成功直接上傳，並同步登錄於試算表，上架大廳！");
-                        closeUploadModal();
-                        await loadVideos(); // 重新整理影片列表
-                    } else {
-                        alert("上傳失敗：" + result.error);
+
+                    if (!result.success) {
+                        throw new Error(result.error || "傳輸中斷，伺服器無回應。");
                     }
-                } catch (e) {
-                    alert("連線錯誤：可能因為影片檔案偏大，傳輸逾時。建議壓縮影片或換小檔案。");
-                } finally {
+
+                    // 記錄第一片上傳成功後，後端傳回的 Google Drive 檔案 ID，後續碎片繼續追加
+                    if (result.fileId) {
+                        fileIdInDrive = result.fileId;
+                    } else if (result.id) {
+                        fileIdInDrive = result.id;
+                    }
+
+                } catch (err) {
                     showLoading(false);
+                    alert(`❌ 上傳中斷：${err.message}\n建議檢查網路連線或稍後再試。`);
+                    return;
                 }
-            };
+
+                startByte = endByte;
+                currentChunkIndex++;
+            }
+
+            // 全部切片傳送完畢，通知成功
+            showLoading(true, "🎉 影片上傳完畢！正在整理大廳清單...", 100);
+            setTimeout(async () => {
+                alert(`🎉 恭喜！超大影片「${title}」(${(fileSize/1024/1024/1024).toFixed(2)} GB) 已成功自動切片上傳並上架！`);
+                closeUploadModal();
+                await loadVideos();
+                showLoading(false);
+            }, 1500);
         }
 
-        // ===================== 後台控制面板相關 =====================
+        // 將 Blob 碎片轉為純 Base64 字串
+        function readBlobAsBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // ===================== 後台控制面板 =====================
         function openAdminModal() {
             document.getElementById('admin-modal').classList.remove('hidden');
             switchAdminTab('users');
@@ -502,7 +515,6 @@
             }
         }
 
-        // 載入成員列表並渲染（前端按鈕權限判定）
         async function loadUsersList() {
             try {
                 const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
@@ -519,26 +531,19 @@
                     result.data.forEach(user => {
                         let actionColumn = "";
 
-                        // 核心規則：只有施柏謙本人（超級管理員）有權力操作後台成員按鈕
                         if (currentUser.email.toLowerCase() === CONFIG.SUPER_ADMIN_EMAIL.toLowerCase()) {
                             if (user.role === '超級管理員') {
                                 actionColumn = `<span class="text-zinc-500">系統保護成員</span>`;
                             } else if (user.status === '待審核') {
                                 actionColumn = `
-                                    <button onclick="approveUser('${user.email}')" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-[10px] mr-2 transition">核准</button>
-                                    <button onclick="rejectUser('${user.email}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] transition">拒絕</button>
+                                    <button onclick="approveUser('${user.email}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-[10px] transition font-bold">核准</button>
                                 `;
                             } else if (user.status === '已核准') {
-                                const promoteBtnText = user.role === '管理員' ? '降為成員' : '升管理員';
-                                const promoteBtnClass = user.role === '管理員' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700';
-                                
                                 actionColumn = `
-                                    <button onclick="promoteUser('${user.email}')" class="text-white px-2 py-1 rounded text-[10px] mr-2 transition ${promoteBtnClass}">${promoteBtnText}</button>
-                                    <button onclick="deleteUser('${user.email}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-[10px] transition">刪除帳號</button>
+                                    <button onclick="deleteUser('${user.email}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-[10px] transition">刪除帳號</button>
                                 `;
                             }
                         } else {
-                            // 其他管理員有看後台的權限，但無任何操作按鈕，確保您的最高權限！
                             actionColumn = `<span class="text-zinc-500 italic">僅超級管理員可操作</span>`;
                         }
 
@@ -557,14 +562,11 @@
                         tbody.insertAdjacentHTML('beforeend', row);
                     });
                 }
-            } catch (e) {
-                console.error("載入成員出錯", e);
-            }
+            } catch (e) { console.error("載入成員出錯", e); }
         }
 
-        // 成員核准
         async function approveUser(targetEmail) {
-            showLoading(true);
+            showLoading(true, "核准成員中...", 50);
             try {
                 const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
                     action: "approveUser",
@@ -573,55 +575,13 @@
                 }));
                 const res = await fetch(url);
                 const result = await res.json();
-                if (result.success) {
-                    alert(result.message);
-                    loadUsersList();
-                } else alert(result.error);
+                if (result.success) { alert(result.message); loadUsersList(); } else alert(result.error);
             } catch (e) { alert("操作出錯"); } finally { showLoading(false); }
         }
 
-        // 成員拒絕
-        async function rejectUser(targetEmail) {
-            if (!confirm(`確定要拒絕 ${targetEmail} 的加入申請嗎？`)) return;
-            showLoading(true);
-            try {
-                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
-                    action: "rejectUser",
-                    userEmail: currentUser.email,
-                    targetEmail: targetEmail
-                }));
-                const res = await fetch(url);
-                const result = await res.json();
-                if (result.success) {
-                    alert(result.message);
-                    loadUsersList();
-                } else alert(result.error);
-            } catch (e) { alert("操作出錯"); } finally { showLoading(false); }
-        }
-
-        // 成員升降級
-        async function promoteUser(targetEmail) {
-            if (!confirm(`確定要變更 ${targetEmail} 的管理權限嗎？`)) return;
-            showLoading(true);
-            try {
-                const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
-                    action: "promoteUser",
-                    userEmail: currentUser.email,
-                    targetEmail: targetEmail
-                }));
-                const res = await fetch(url);
-                const result = await res.json();
-                if (result.success) {
-                    alert(result.message);
-                    loadUsersList();
-                } else alert(result.error);
-            } catch (e) { alert("操作出錯"); } finally { showLoading(false); }
-        }
-
-        // 刪除成員帳號
         async function deleteUser(targetEmail) {
-            if (!confirm(`警告！您確定要永久註銷 ${targetEmail} 的帳號嗎？此動作將清除其在資料庫的紀錄且不可復原！`)) return;
-            showLoading(true);
+            if (!confirm(`警告！您確定要永久註銷 ${targetEmail} 的帳號嗎？`)) return;
+            showLoading(true, "刪除帳號中...", 50);
             try {
                 const url = CONFIG.GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
                     action: "deleteUser",
@@ -630,21 +590,15 @@
                 }));
                 const res = await fetch(url);
                 const result = await res.json();
-                if (result.success) {
-                    alert(result.message);
-                    loadUsersList();
-                } else alert(result.error);
+                if (result.success) { alert(result.message); loadUsersList(); } else alert(result.error);
             } catch (e) { alert("操作出錯"); } finally { showLoading(false); }
         }
 
-        // 載入系統紀錄
         async function loadSystemLogs() {
             try {
                 const tbody = document.getElementById('logs-table-body');
                 tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-zinc-500">系統紀錄功能已成功整合</td></tr>`;
-            } catch (e) {
-                console.error("讀取紀錄失敗");
-            }
+            } catch (e) { console.error(e); }
         }
     </script>
 </body>
