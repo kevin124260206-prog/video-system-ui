@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>施柏謙影音系統</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --bg-color: #f4f4f9;
+            --text-color: #333;
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; 
+        }
+        
+        /* 導覽列 */
+        header { 
+            background: var(--primary-color); 
+            color: white; 
+            padding: 15px 30px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        header h2 { margin: 0; font-size: 1.5rem; }
+        
+        .user-controls { display: flex; align-items: center; gap: 15px; }
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .logout-btn:hover { background: #c0392b; }
+
+        /* 主內容區 */
+        main { 
+            flex: 1; 
+            padding: 30px 20px; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            width: 100%; 
+            box-sizing: border-box; 
+        }
+        
+        .hidden { display: none !important; }
+        
+        /* 登入區塊 */
+        .login-container { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 60vh; 
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            padding: 40px;
+            max-width: 400px;
+            margin: 40px auto;
+        }
+        
+        /* 載入動畫 */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* 影片儀表板 */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        #search-bar {
+            padding: 10px 15px;
+            width: 100%;
+            max-width: 350px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            outline: none;
+            font-size: 1rem;
+        }
+        #search-bar:focus { border-color: var(--accent-color); }
+
+        /* 影片網格卡片 */
+        .video-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+            gap: 25px; 
+        }
+        .video-card { 
+            background: white; 
+            border-radius: 10px; 
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .video-card:hover { 
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        .video-thumbnail {
+            width: 100%;
+            height: 160px;
+            background-color: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 3rem;
+        }
+        .video-info { padding: 15px; flex: 1; display: flex; flex-direction: column; }
+        .video-title { font-size: 1.1rem; font-weight: bold; margin: 0 0 10px 0; }
+        .video-desc { font-size: 0.9rem; color: #666; margin-bottom: 15px; flex: 1; }
+        .play-btn {
+            background: var(--accent-color);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            display: block;
+        }
+        .play-btn:hover { background: #2980b9; }
+
+        footer { 
+            background: var(--primary-color); 
+            color: white; 
+            text-align: center; 
+            padding: 15px; 
+            margin-top: auto; 
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>施柏謙影音系統</h2>
+        <div id="user-info" class="hidden user-controls">
+            <span>👤 <span id="user-email"></span> (<span id="user-role"></span>)</span>
+            <button class="logout-btn" onclick="logout()">登出</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="login-section" class="login-container">
+            <h2 style="margin-top:0;">系統登入</h2>
+            <p style="color: #666; margin-bottom: 30px;">請使用您的 Google 帳號登入</p>
+            
+            <div id="g_id_onload"
+                 data-client_id="212965450673-l5t565r87q35cqrnfsec9ib01ut86vpj.apps.googleusercontent.com" 
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
+            
+            <div id="login-loader" class="hidden">
+                <div class="loader"></div>
+                <p>驗證權限中，請稍候...</p>
+            </div>
+        </div>
+
+        <div id="dashboard-section" class="hidden">
+            <div class="dashboard-header">
+                <h3>影片庫</h3>
+                <input type="text" id="search-bar" placeholder="🔍 搜尋影片名稱或描述..." onkeyup="filterVideos()">
+            </div>
+            
+            <div id="video-loader" class="hidden" style="text-align: center; padding: 40px;">
+                <div class="loader"></div>
+                <p>正在從資料庫載入影片...</p>
+            </div>
+
+            <div class="video-grid" id="video-list">
+                </div>
+        </div>
+    </main>
+
+    <footer>
+        &copy; 2025-<span id="current-year"></span> 施柏謙 All Rights Reserved.
+    </footer>
+
+    <script>
+        // 自動更新年份
+        document.getElementById('current-year').innerText = new Date().getFullYear();
+
+        // ==========================================
+        // 核心設定區 (請替換這兩個變數)
+        // ==========================================
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxXVr13i_FTAnwFKdzMKwzx4JZsuQ5eIzvfSMt9fp09H8OIniSx0_Gcl9PrXrLfEomO/exec"; 
+        
+        let currentUserEmail = "";
+        let globalVideos = []; // 儲存所有影片資料供搜尋使用
+
+        // 解析 JWT Token 取得 Email
+        function parseJwt(token) {
+            var base64Url = token.split('.')[1];
+            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        // Google 登入成功後的回呼函式
+        function handleCredentialResponse(response) {
+            const payload = parseJwt(response.credential);
+            currentUserEmail = payload.email;
+            
+            // 顯示載入中動畫，隱藏登入按鈕
+            document.querySelector('.g_id_signin').classList.add('hidden');
+            document.getElementById('login-loader').classList.remove('hidden');
+            
+            // 向 GAS 驗證權限
+            fetch(GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                action: "login",
+                userEmail: currentUserEmail
+            })))
+            .then(res => res.json())
+            .then(result => {
+                if(result.success) {
+                    // 登入成功，切換介面
+                    document.getElementById('login-section').classList.add('hidden');
+                    document.getElementById('dashboard-section').classList.remove('hidden');
+                    document.getElementById('user-info').classList.remove('hidden');
+                    
+                    document.getElementById('user-email').innerText = currentUserEmail;
+                    document.getElementById('user-role').innerText = result.role;
+                    
+                    // 開始載入影片清單
+                    loadVideos(); 
+                } else {
+                    alert("登入失敗：" + result.error);
+                    resetLoginUI();
+                }
+            })
+            .catch(err => {
+                alert("系統連線錯誤，請確認 GAS API 網址是否正確。");
+                resetLoginUI();
+            });
+        }
+
+        // 載入影片清單
+        function loadVideos() {
+            document.getElementById('video-loader').classList.remove('hidden');
+            document.getElementById('video-list').innerHTML = "";
+
+            fetch(GAS_API_URL + "?data=" + encodeURIComponent(JSON.stringify({
+                action: "getVideos",
+                userEmail: currentUserEmail
+            })))
+            .then(res => res.json())
+            .then(result => {
+                document.getElementById('video-loader').classList.add('hidden');
+                if(result.success) {
+                    globalVideos = result.data;
+                    renderVideos(globalVideos);
+                } else {
+                    document.getElementById('video-list').innerHTML = `<p style="color:red;">無法載入影片：${result.error}</p>`;
+                }
+            })
+            .catch(err => {
+                document.getElementById('video-loader').classList.add('hidden');
+                document.getElementById('video-list').innerHTML = `<p style="color:red;">讀取影片時發生連線錯誤。</p>`;
+            });
+        }
+
+        // 將影片資料渲染到畫面上
+        function renderVideos(videos) {
+            const listContainer = document.getElementById('video-list');
+            listContainer.innerHTML = "";
+            
+            if(videos.length === 0) {
+                listContainer.innerHTML = "<p>目前沒有可觀看的影片。</p>";
+                return;
+            }
+
+            videos.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                // 假設影片資料格式為: { id, title, description, url }
+                card.innerHTML = `
+                    <div class="video-thumbnail">▶️</div>
+                    <div class="video-info">
+                        <h4 class="video-title">${video.title || '未命名影片'}</h4>
+                        <p class="video-desc">${video.description || '無描述'}</p>
+                        <a href="${video.url || '#'}" target="_blank" class="play-btn">立即播放</a>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        // 搜尋過濾功能
+        function filterVideos() {
+            const keyword = document.getElementById('search-bar').value.toLowerCase();
+            const filtered = globalVideos.filter(video => 
+                (video.title && video.title.toLowerCase().includes(keyword)) || 
+                (video.description && video.description.toLowerCase().includes(keyword))
+            );
+            renderVideos(filtered);
+        }
+
+        // 登出功能
+        function logout() {
+            currentUserEmail = "";
+            globalVideos = [];
+            
+            // 恢復介面狀態
+            document.getElementById('dashboard-section').classList.add('hidden');
+            document.getElementById('user-info').classList.add('hidden');
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('search-bar').value = "";
+            
+            resetLoginUI();
+        }
+
+        function resetLoginUI() {
+            document.querySelector('.g_id_signin').classList.remove('hidden');
+            document.getElementById('login-loader').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
