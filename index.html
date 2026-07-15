@@ -54,7 +54,7 @@
     <header>
         <h2>影音系統</h2>
         <div id="login-btn">
-            <div id="g_id_onload" data-client_id="YOUR_GCP_CLIENT_ID" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
+            <div id="g_id_onload" data-client_id="212965450673-u44o4joqlh255cmqlpsb0mc7g9pmuhuo.apps.googleusercontent.com" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
             <div class="g_id_signin" data-type="standard" data-theme="filled_black"></div>
         </div>
         <div id="user-info" class="user-profile hidden"></div>
@@ -72,7 +72,7 @@
                 <div class="control-group">
                     <h4>帳號快速審核</h4>
                     <input type="text" id="target-email" placeholder="輸入會員 Email">
-                    <select id="target-role" style="padding:10px; margin-right:5px;"><option value="一般會員">一般會員</option><option value="管理員">管理員</option></select>
+                    <select id="target-role" style="padding:10px; margin-right:5px;"><option value="一般成員">一般成員</option><option value="管理員">管理員</option></select>
                     <select id="target-status" style="padding:10px; margin-right:5px;"><option value="已核准">核准</option><option value="封鎖">封鎖</option></select>
                     <button onclick="updateUser()">執行修改</button>
                 </div>
@@ -99,8 +99,8 @@
     <script>
         document.getElementById('current-year').innerText = new Date().getFullYear();
         
-        // 已更新為您提供的最新部署網址
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxwwPiUcQklmxqVzwRo29c7vsgvKCypWY9Hb3l9EwGP0LWgzr4adVdI9aYv_5M0_pg/exec";
+        // 最終完整版 GAS URL
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwg1WnhnPPc5KBfZKCD4FSxuewO2szmLVBTidMh8Ai4dHaz9M_jTBphZkjbwx4pf9zi/exec";
         let currentUser = { email: "", role: "" };
 
         function parseJwt(token) {
@@ -128,7 +128,7 @@
                     document.getElementById('user-info').innerText = `${currentUser.email} (${currentUser.role})`;
                     document.getElementById('video-section').classList.remove('hidden');
                     
-                    // 根據權限渲染 Admin Zone
+                    // 根據權限渲染 Admin Zone (超級管理員與管理員)
                     if (currentUser.role === "管理員" || currentUser.role === "超級管理員") {
                         document.getElementById('admin-zone').classList.remove('hidden');
                     }
@@ -136,71 +136,90 @@
                 } else {
                     alert("登入失敗：" + data.error);
                 }
-            } catch(e) { alert("系統連線異常，已鎖定。"); }
+            } catch(e) { 
+                console.error("連線錯誤詳情:", e);
+                alert("系統連線異常，詳細錯誤已記錄在瀏覽器 Console 中 (請按 F12 檢查)。"); 
+            }
         }
 
         // 載入與渲染 YouTube 風格網格
         async function loadSystemData() {
             document.getElementById('video-grid').innerHTML = "<p>載入影片中...</p>";
-            const res = await fetch(GAS_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(JSON.stringify({ action: "getSystemData", userEmail: currentUser.email }))
-            });
-            const result = await res.json();
-            
-            if (result.success) {
-                const grid = document.getElementById('video-grid');
-                grid.innerHTML = "";
-                result.data.videos.forEach(v => {
-                    let badgeColor = v.status === '已核准' ? 'approved' : (v.status === '待審核' ? 'pending' : 'rejected');
-                    let adminHtml = (currentUser.role === "管理員" || currentUser.role === "超級管理員") && v.status === "待審核" ? 
-                        `<div style="margin-top:10px;"><button onclick="reviewVideo('${v.id}', '已核准', '${v.uploader}', event)" style="background:#16a34a; padding:5px 10px;">核准</button> 
-                         <button onclick="reviewVideo('${v.id}', '已拒絕', '${v.uploader}', event)" style="background:#dc2626; padding:5px 10px;">拒絕</button></div>` : "";
-
-                    grid.innerHTML += `
-                        <div class="video-card" onclick="openPlayer('${v.id}')">
-                            <div class="thumbnail-container">
-                                <img src="${v.thumbnail}" alt="Thumbnail" onerror="this.src='https://via.placeholder.com/800x450/222/555?text=Video'">
-                            </div>
-                            <div class="video-info">
-                                <span class="badge ${badgeColor}">${v.status}</span>
-                                <h4 class="video-title">${v.title}</h4>
-                                <div class="video-meta">${v.uploader} • 標籤: ${v.tags}</div>
-                                ${adminHtml}
-                            </div>
-                        </div>`;
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'data=' + encodeURIComponent(JSON.stringify({ action: "getSystemData", userEmail: currentUser.email }))
                 });
+                const result = await res.json();
+                
+                if (result.success) {
+                    const grid = document.getElementById('video-grid');
+                    grid.innerHTML = "";
+                    if (!result.data.videos || result.data.videos.length === 0) {
+                        grid.innerHTML = "<p>目前還沒有可觀看的影片哦！</p>";
+                        return;
+                    }
+
+                    result.data.videos.forEach(v => {
+                        let badgeColor = v.status === '已核准' ? 'approved' : (v.status === '待審核' ? 'pending' : 'rejected');
+                        let adminHtml = (currentUser.role === "管理員" || currentUser.role === "超級管理員") && v.status === "待審核" ? 
+                            `<div style="margin-top:10px;"><button onclick="reviewVideo('${v.id}', '已核准', '${v.uploader}', event)" style="background:#16a34a; padding:5px 10px;">核准</button> 
+                             <button onclick="reviewVideo('${v.id}', '已拒絕', '${v.uploader}', event)" style="background:#dc2626; padding:5px 10px;">拒絕</button></div>` : "";
+
+                        grid.innerHTML += `
+                            <div class="video-card" onclick="openPlayer('${v.id}')">
+                                <div class="thumbnail-container">
+                                    <img src="${v.thumbnail}" alt="Thumbnail" onerror="this.src='https://via.placeholder.com/800x450/222/555?text=Video'">
+                                </div>
+                                <div class="video-info">
+                                    <span class="badge ${badgeColor}">${v.status}</span>
+                                    <h4 class="video-title">${v.title}</h4>
+                                    <div class="video-meta">${v.uploader} • 標籤: ${v.tags}</div>
+                                    ${adminHtml}
+                                </div>
+                            </div>`;
+                    });
+                } else {
+                    document.getElementById('video-grid').innerHTML = `<p>載入失敗: ${result.error}</p>`;
+                }
+            } catch(e) {
+                console.error("載入資料錯誤:", e);
+                document.getElementById('video-grid').innerHTML = "<p>無法取得資料，請檢查後端連線。</p>";
             }
         }
 
         // 單筆審核觸發
         async function reviewVideo(videoId, status, uploaderEmail, event) {
-            event.stopPropagation(); // 防止點擊觸發播放
+            event.stopPropagation();
             if(!confirm(`確定將影片設為 ${status} 嗎？系統將自動發送 Email 通知上傳者。`)) return;
             
-            const res = await fetch(GAS_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(JSON.stringify({ action: "reviewVideo", userEmail: currentUser.email, videoId, status, uploaderEmail }))
-            });
-            const result = await res.json();
-            alert(result.success ? "審核完成！已發信通知。" : result.error);
-            loadSystemData(); // 重新載入列表
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'data=' + encodeURIComponent(JSON.stringify({ action: "reviewVideo", userEmail: currentUser.email, videoId, status, uploaderEmail }))
+                });
+                const result = await res.json();
+                alert(result.success ? "審核完成！已發信通知。" : result.error);
+                loadSystemData(); 
+            } catch(e) { alert("發生錯誤，請稍後再試。"); }
         }
 
         // 新增儲存空間
         async function addStorage() {
             const folderId = document.getElementById('new-folder-id').value;
             if(!folderId) return alert("請輸入 ID");
-            const res = await fetch(GAS_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(JSON.stringify({ action: "updateStorage", userEmail: currentUser.email, folderId }))
-            });
-            const result = await res.json();
-            alert(result.success ? result.message : result.error);
-            document.getElementById('new-folder-id').value = '';
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'data=' + encodeURIComponent(JSON.stringify({ action: "updateStorage", userEmail: currentUser.email, folderId }))
+                });
+                const result = await res.json();
+                alert(result.success ? result.message : result.error);
+                document.getElementById('new-folder-id').value = '';
+            } catch(e) { alert("發生錯誤。"); }
         }
 
         // 帳號管理
@@ -208,31 +227,34 @@
             const targetEmail = document.getElementById('target-email').value;
             const newRole = document.getElementById('target-role').value;
             const newStatus = document.getElementById('target-status').value;
-            const res = await fetch(GAS_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(JSON.stringify({ action: "manageUser", userEmail: currentUser.email, targetEmail, newRole, newStatus }))
-            });
-            const result = await res.json();
-            alert(result.success ? result.message : result.error);
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'data=' + encodeURIComponent(JSON.stringify({ action: "manageUser", userEmail: currentUser.email, targetEmail, newRole, newStatus }))
+                });
+                const result = await res.json();
+                alert(result.success ? result.message : result.error);
+            } catch(e) { alert("發生錯誤。"); }
         }
 
-        // 播放影片 (透過代理取得串流 URL，支援預載緩衝)
+        // 播放影片
         async function openPlayer(videoId) {
             const playerModal = document.getElementById('player-modal');
             const videoElement = document.getElementById('html5-player');
             
-            // 向 GAS 請求加密串流連結
-            const res = await fetch(`${GAS_URL}?action=stream&videoId=${videoId}&email=${currentUser.email}`);
-            const data = await res.json();
-            
-            if(data.url) {
-                playerModal.classList.remove('hidden');
-                videoElement.src = data.url;
-                videoElement.play();
-            } else {
-                alert("無法播放：可能是權限不足或檔案格式錯誤。");
-            }
+            try {
+                const res = await fetch(`${GAS_URL}?action=stream&videoId=${videoId}&email=${currentUser.email}`);
+                const data = await res.json();
+                
+                if(data.url) {
+                    playerModal.classList.remove('hidden');
+                    videoElement.src = data.url;
+                    videoElement.play();
+                } else {
+                    alert("無法播放：可能是權限不足或檔案格式錯誤。");
+                }
+            } catch(e) { alert("播放請求失敗。"); }
         }
 
         function closePlayer() {
@@ -240,7 +262,7 @@
             const videoElement = document.getElementById('html5-player');
             playerModal.classList.add('hidden');
             videoElement.pause();
-            videoElement.src = ""; // 清空緩存
+            videoElement.src = "";
         }
     </script>
 </body>
