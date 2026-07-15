@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>施柏謙影音系統</title>
     
-    <!-- Google OAuth -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* ========== 完整 CSS（與之前相同，此處精簡保留關鍵部分） ========== */
         :root {
             --bg-primary: #0f0f0f;
             --bg-secondary: #1a1a1a;
@@ -48,17 +45,27 @@
         .navbar-search input { width: 100%; padding: 10px 50px 10px 20px; border-radius: 24px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); font-size: 0.95rem; outline: none; }
         .navbar-search input:focus { border-color: var(--blue); }
         .navbar-search button { position: absolute; right: 4px; top: 4px; background: var(--bg-tertiary); border: none; color: var(--text-primary); padding: 6px 16px; border-radius: 20px; cursor: pointer; }
-        .navbar-user { display: flex; align-items: center; gap: 16px; }
+        
+        .navbar-user { display: none; align-items: center; gap: 16px; }
+        .navbar-user.logged-in { display: flex; }
+
         .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; }
         .admin-btn { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; display: none; }
         .admin-btn.visible { display: inline-flex; align-items: center; gap: 6px; }
         .logout-btn { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; }
+        
         .main-content { flex: 1; max-width: 1400px; margin: 0 auto; padding: 24px; width: 100%; }
+        .section-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        
         .login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; }
         .login-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 48px 40px; max-width: 420px; width: 100%; text-align: center; }
+        .login-card h2 { margin-bottom: 8px; }
+        .login-card p { color: var(--text-secondary); margin-bottom: 24px; font-size: 0.9rem; }
         .login-card .logo-icon { font-size: 4rem; color: var(--accent); margin-bottom: 16px; }
+        .g_id_signin { display: flex; justify-content: center; }
+        
         .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .video-card { cursor: pointer; transition: var(--transition); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-secondary); }
+        .video-card { cursor: pointer; transition: var(--transition); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-secondary); border: 1px solid var(--border); }
         .video-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
         .thumbnail-container { position: relative; width: 100%; padding-top: 56.25%; background: var(--bg-tertiary); overflow: hidden; }
         .thumbnail-container img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -71,12 +78,22 @@
         .video-details { flex: 1; min-width: 0; }
         .video-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .video-meta { font-size: 0.8rem; color: var(--text-secondary); }
+        
         .player-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; flex-direction: column; }
         .player-overlay.active { display: flex; }
         .player-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; }
         .close-player { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-        .player-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .player-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; position: relative; }
         .player-container video { max-width: 100%; max-height: 70vh; border-radius: var(--radius-sm); }
+        
+        .custom-controls { width: 100%; max-width: 800px; margin-top: 15px; display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.6); padding: 12px; border-radius: var(--radius-sm); }
+        .progress-bar-container { width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 3px; cursor: pointer; position: relative; }
+        .progress-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width 0.1s linear; }
+        .controls-row { display: flex; justify-content: space-between; align-items: center; color: var(--text-primary); }
+        .controls-left, .controls-right { display: flex; align-items: center; gap: 15px; }
+        .control-btn { background: none; border: none; color: white; font-size: 1.1rem; cursor: pointer; }
+        .time-display { font-size: 0.85rem; color: var(--text-secondary); }
+
         .admin-panel-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; display: none; align-items: center; justify-content: center; }
         .admin-panel-overlay.active { display: flex; }
         .admin-panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); width: 90%; max-width: 900px; max-height: 85vh; overflow-y: auto; padding: 32px; }
@@ -85,17 +102,26 @@
         .admin-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
         .admin-tab-content { display: none; }
         .admin-tab-content.active { display: block; }
-        .btn { padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 12px; text-align: left; }
+        .admin-table th, .admin-table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .admin-table th { color: var(--text-secondary); font-weight: 500; }
+        
+        .input-field { background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 14px; border-radius: 20px; outline: none; margin-right: 8px; margin-bottom: 10px; font-size: 0.85rem; }
+        .input-field:focus { border-color: var(--blue); }
+        
+        .btn { padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; margin-right: 4px; }
         .btn-approve { background: var(--green); color: white; }
         .btn-reject { background: var(--accent); color: white; }
         .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
         .status-approved { background: #1b5e20; color: #81c784; }
         .status-pending { background: #e65100; color: #ffab40; }
         .status-rejected { background: #b71c1c; color: #ef9a9a; }
+        
         .hidden { display: none !important; }
         .loading-spinner { display: flex; flex-direction: column; align-items: center; padding: 60px; color: var(--text-secondary); }
         .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
         .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; border-radius: 8px; color: white; font-weight: 500; z-index: 9999; animation: slideIn 0.3s ease; }
         .toast-success { background: #2e7d32; }
         .toast-error { background: #c62828; }
@@ -106,14 +132,13 @@
 </head>
 <body>
 
-    <!-- 導覽列 -->
     <nav class="navbar">
         <div class="navbar-brand" onclick="goHome()"><i class="fa-solid fa-play"></i><span>施柏謙影音</span></div>
         <div class="navbar-search" id="search-container">
-            <input type="text" id="search-input" placeholder="搜尋影片..." onkeyup="handleSearch(this.value)">
+            <input type="text" id="search-input" placeholder="搜尋影片..." onkeydown="if(event.key==='Enter') handleSearch(this.value)">
             <button onclick="handleSearch(document.getElementById('search-input').value)"><i class="fa-solid fa-magnifying-glass"></i></button>
         </div>
-        <div class="navbar-user">
+        <div class="navbar-user" id="navbar-user">
             <button class="admin-btn" id="admin-btn" onclick="openAdminPanel()"><i class="fa-solid fa-gear"></i> 管理後台</button>
             <span id="user-display-name" style="color: var(--text-secondary); font-size: 0.85rem;"></span>
             <div class="user-avatar" id="user-avatar-initial">?</div>
@@ -121,9 +146,7 @@
         </div>
     </nav>
 
-    <!-- 主內容 -->
     <div class="main-content" id="main-content">
-        <!-- 登入頁 -->
         <div class="login-page" id="login-page">
             <div class="login-card">
                 <div class="logo-icon"><i class="fa-solid fa-film"></i></div>
@@ -141,7 +164,6 @@
             </div>
         </div>
         
-        <!-- 影片庫 -->
         <div class="hidden" id="videos-page">
             <div class="section-title"><i class="fa-solid fa-house"></i> 全部影片</div>
             <div class="video-grid" id="video-grid"></div>
@@ -153,22 +175,36 @@
         </div>
     </div>
 
-    <!-- 播放器 -->
     <div class="player-overlay" id="player-overlay">
         <div class="player-header">
-            <span class="video-title-display" id="player-video-title">影片標題</span>
+            <span class="video-title-display" id="player-video-title" style="font-size: 1.1rem; font-weight:600;">影片標題</span>
             <button class="close-player" onclick="closePlayer()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="player-container">
             <video id="video-player" controls controlsList="nodownload" ontimeupdate="updateProgress()" onloadedmetadata="updateDuration()"></video>
+            <div class="custom-controls">
+                <div class="progress-bar-container" onclick="seekVideo(event)">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="controls-row">
+                    <div class="controls-left">
+                        <button class="control-btn" onclick="togglePlay()"><i class="fa-solid fa-play" id="play-btn-icon"></i></button>
+                        <span class="time-display">
+                            <span id="current-time">0:00</span> / <span id="total-time">0:00</span>
+                        </span>
+                    </div>
+                    <div class="controls-right">
+                        <button class="control-btn" onclick="toggleFullscreen()"><i class="fa-solid fa-expand"></i></button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- 管理後台 -->
     <div class="admin-panel-overlay" id="admin-overlay">
         <div class="admin-panel">
-            <button class="close-player" style="float:right;" onclick="closeAdminPanel()"><i class="fa-solid fa-xmark"></i></button>
-            <h3><i class="fa-solid fa-shield-halved"></i> 管理控制台</h3>
+            <button class="close-player" style="float:right; color: var(--text-primary);" onclick="closeAdminPanel()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 style="margin-bottom: 20px;"><i class="fa-solid fa-shield-halved"></i> 管理控制台</h3>
             <div class="admin-tabs">
                 <div class="admin-tab active" data-tab="tab-users" onclick="switchAdminTab('tab-users')">成員管理</div>
                 <div class="admin-tab" data-tab="tab-pending" onclick="switchAdminTab('tab-pending')">待審核</div>
@@ -180,14 +216,18 @@
                 <table class="admin-table"><thead><tr><th>Email</th><th>顯示名稱</th><th>角色</th><th>狀態</th><th>操作</th></tr></thead><tbody id="users-table-body"></tbody></table>
             </div>
             <div class="admin-tab-content" id="tab-pending">
-                <h4>待審核申請</h4><div id="pending-list"></div>
+                <h4>待審核申請</h4>
+                <div id="pending-list" style="margin-top: 15px;"></div>
             </div>
             <div class="admin-tab-content" id="tab-storage">
-                <h4>儲存空間狀態</h4><div id="storage-info"></div>
+                <h4 style="margin-bottom: 15px;">儲存空間狀態</h4>
+                <div id="storage-info" style="margin-bottom: 20px; line-height: 1.6;"></div>
                 <h5>新增儲存區 (僅超級管理員)</h5>
-                <input type="text" class="input-field" id="new-folder-id" placeholder="Google Drive 資料夾 ID">
-                <input type="text" class="input-field" id="new-folder-name" placeholder="資料夾名稱">
-                <button class="btn btn-approve" onclick="addStorageFolder()">新增</button>
+                <div style="margin-top: 12px;">
+                    <input type="text" class="input-field" id="new-folder-id" placeholder="Google Drive 資料夾 ID">
+                    <input type="text" class="input-field" id="new-folder-name" placeholder="資料夾名稱">
+                    <button class="btn btn-approve" onclick="addStorageFolder()">新增</button>
+                </div>
             </div>
             <div class="admin-tab-content" id="tab-logs">
                 <h4>最近系統紀錄</h4>
@@ -197,19 +237,17 @@
     </div>
 
     <script>
-        // ===================== 設定 =====================
+        // ===================== 系統設定 =====================
         const CONFIG = {
-            GAS_API_URL: "https://script.google.com/macros/s/AKfycbxzTrjm1yAvsPi4n2EUmjzkkzp212_f1rjm9Ewr4N1KJb36D_9U9-V3OzFbJ2sfNno4/exec",  // 請換成你自己的 GAS 網址
-            CLIENT_ID: "212965450673-u44o4joqlh255cmqlpsb0mc7g9pmuhuo.apps.googleusercontent.com"       // 請換成你自己的 OAuth Client ID
+            GAS_API_URL: "https://script.google.com/macros/s/AKfycbyTfMC3ooxeEahkXHhiQRpsozCWeMpw_ZJqNUd6sj4nQ9I5jR_OjKZd9RX5Ks0nVlaC/exec", 
+            CLIENT_ID: "212965450673-u44o4joqlh255cmqlpsb0mc7g9pmuhuo.apps.googleusercontent.com"
         };
 
-        // ===================== 全域狀態 =====================
         const state = {
             userEmail: "", displayName: "", role: "", status: "",
-            videos: [], currentVideo: null
+            videos: [], currentVideo: null, currentAdminTab: "tab-users"
         };
 
-        // ===================== 工具函式 =====================
         function showToast(msg, type='info') {
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
@@ -232,7 +270,6 @@
             return JSON.parse(jsonPayload);
         }
 
-        // ===================== 登入 =====================
         function handleGoogleLogin(response) {
             const payload = parseJwt(response.credential);
             state.userEmail = payload.email;
@@ -274,10 +311,11 @@
 
         function resetLoginUI() {
             document.getElementById('login-status').classList.add('hidden');
-            document.querySelector('.g_id_signin').style.display = 'block';
+            document.querySelector('.g_id_signin').style.display = 'flex';
         }
 
         function updateUIForUser() {
+            document.getElementById('navbar-user').classList.add('logged-in');
             document.getElementById('user-display-name').textContent = state.displayName;
             document.getElementById('user-avatar-initial').textContent = state.displayName.charAt(0).toUpperCase();
             if (state.role === '超級管理員' || state.role === '管理員') {
@@ -285,7 +323,6 @@
             }
         }
 
-        // ===================== 影片 =====================
         async function loadVideos() {
             document.getElementById('videos-loading').classList.remove('hidden');
             try {
@@ -326,7 +363,7 @@
                         <div class="video-details">
                             <div class="video-title">${v.title}</div>
                             <div class="video-meta">
-                                <span>${v.uploader || '未知'}</span>
+                                <span>${v.uploader || '未知'}</span> · 
                                 <span>${v.views || 0} 次觀看 · ${v.uploadDate || ''}</span>
                             </div>
                         </div>
@@ -336,7 +373,11 @@
         }
 
         function handleSearch(keyword) {
-            const kw = keyword.toLowerCase();
+            const kw = keyword.toLowerCase().trim();
+            if (!kw) {
+                renderVideoGrid(state.videos);
+                return;
+            }
             const filtered = state.videos.filter(v => 
                 (v.title||'').toLowerCase().includes(kw) || 
                 (v.description||'').toLowerCase().includes(kw)
@@ -344,10 +385,8 @@
             renderVideoGrid(filtered);
         }
 
-        // ===================== 播放器與加密串流 =====================
         async function openVideo(videoId) {
             try {
-                // 先取得加密 token
                 const tokenRes = await callAPI('getStreamToken', { videoId, userEmail: state.userEmail });
                 if (!tokenRes.success) {
                     showToast(tokenRes.error, 'error');
@@ -360,6 +399,7 @@
                     state.videos.find(v => v.id === videoId)?.title || '影片';
                 document.getElementById('player-overlay').classList.add('active');
                 player.play();
+                document.getElementById('play-btn-icon').className = "fa-solid fa-pause";
             } catch (e) {
                 showToast('無法載入影片', 'error');
             }
@@ -374,42 +414,58 @@
 
         function updateProgress() {
             const player = document.getElementById('video-player');
-            const pct = (player.currentTime / player.duration) * 100;
-            document.getElementById('progress-fill').style.width = pct + '%';
-            document.getElementById('current-time').textContent = formatTime(player.currentTime);
+            if (player.duration) {
+                const pct = (player.currentTime / player.duration) * 100;
+                document.getElementById('progress-fill').style.width = pct + '%';
+                document.getElementById('current-time').textContent = formatTime(player.currentTime);
+            }
         }
         function updateDuration() {
             const player = document.getElementById('video-player');
-            document.getElementById('total-time').textContent = formatTime(player.duration);
+            document.getElementById('total-time').textContent = formatTime(player.duration || 0);
         }
         function formatTime(sec) {
+            if (isNaN(sec)) return '0:00';
             const m = Math.floor(sec / 60);
             const s = Math.floor(sec % 60);
             return m + ':' + (s < 10 ? '0' : '') + s;
         }
         function togglePlay() {
             const player = document.getElementById('video-player');
-            player.paused ? player.play() : player.pause();
+            const icon = document.getElementById('play-btn-icon');
+            if (player.paused) {
+                player.play();
+                icon.className = "fa-solid fa-pause";
+            } else {
+                player.pause();
+                icon.className = "fa-solid fa-play";
+            }
         }
         function seekVideo(e) {
             const bar = e.currentTarget;
+            const player = document.getElementById('video-player');
+            if (!player.duration) return;
             const pct = e.offsetX / bar.offsetWidth;
-            document.getElementById('video-player').currentTime = pct * document.getElementById('video-player').duration;
+            player.currentTime = pct * player.duration;
         }
         function toggleFullscreen() {
             const player = document.getElementById('video-player');
-            if (player.requestFullscreen) player.requestFullscreen();
+            if (player.requestFullscreen) {
+                player.requestFullscreen();
+            } else if (player.webkitRequestFullscreen) {
+                player.webkitRequestFullscreen();
+            }
         }
 
-        // ===================== 管理後台 =====================
         function openAdminPanel() {
             document.getElementById('admin-overlay').classList.add('active');
-            loadAdminData('tab-users');
+            switchAdminTab('tab-users');
         }
         function closeAdminPanel() {
             document.getElementById('admin-overlay').classList.remove('active');
         }
         function switchAdminTab(tabId) {
+            state.currentAdminTab = tabId;
             document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
             document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
             document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
@@ -430,7 +486,7 @@
                                 ${u.role !== '超級管理員' ? `
                                 <button class="btn btn-approve" onclick="approveUser('${u.email}')">核准</button>
                                 <button class="btn btn-reject" onclick="rejectUser('${u.email}')">拒絕</button>
-                                ` : '受保護'}
+                                ` : '<span style="color:var(--text-tertiary)">系統保護</span>'}
                             </td>
                         </tr>
                     `).join('');
@@ -440,23 +496,23 @@
                 if (res.success) {
                     const div = document.getElementById('pending-list');
                     div.innerHTML = res.data.length ? res.data.map(u => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
                             <span>${u.displayName} (${u.email})</span>
                             <div>
                                 <button class="btn btn-approve" onclick="approveUser('${u.email}')">核准</button>
                                 <button class="btn btn-reject" onclick="rejectUser('${u.email}')">拒絕</button>
                             </div>
                         </div>
-                    `).join('') : '<p>暫無待審核申請</p>';
+                    `).join('') : '<p style="color:var(--text-secondary); padding: 15px 0;">暫無待審核申請</p>';
                 }
             } else if (tabId === 'tab-storage') {
                 const res = await callAPI('getStorageInfo', { userEmail: state.userEmail });
                 if (res.success) {
                     document.getElementById('storage-info').innerHTML = res.data.map(s => `
-                        <div style="margin-bottom:10px;">
-                            <strong>${s.folderName}</strong> (${s.currentSizeGB} GB / ${s.limitGB} GB) 
-                            <span style="color:${s.isActive?'#4caf50':'#888'}">${s.isActive ? '● 啟用中' : '○ 未啟用'}</span>
-                            ${s.isFull ? '<span style="color:#f44336;"> [已滿]</span>' : ''}
+                        <div style="margin-bottom:15px; background:var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm);">
+                            <strong>${s.folderName}</strong> <span style="font-size:0.85rem;color:var(--text-secondary)">(${s.currentSizeGB} GB / ${s.limitGB} GB)</span><br>
+                            <span style="color:${s.isActive?'#4caf50':'#888'}; font-size:0.85rem;">${s.isActive ? '● 啟用中' : '○ 未啟用'}</span>
+                            ${s.isFull ? '<span style="color:#f44336; font-size:0.85rem;"> [已滿]</span>' : ''}
                         </div>
                     `).join('');
                 }
@@ -473,13 +529,14 @@
         async function approveUser(email) {
             const res = await callAPI('approveUser', { userEmail: state.userEmail, targetEmail: email });
             showToast(res.message, res.success ? 'success' : 'error');
-            if (res.success) switchAdminTab('tab-pending');
+            if (res.success) loadAdminData(state.currentAdminTab);
         }
         async function rejectUser(email) {
             const reason = prompt('請輸入拒絕原因（可留空）：');
+            if (reason === null) return; 
             const res = await callAPI('rejectUser', { userEmail: state.userEmail, targetEmail: email, reason });
             showToast(res.message, res.success ? 'success' : 'error');
-            if (res.success) switchAdminTab('tab-pending');
+            if (res.success) loadAdminData(state.currentAdminTab);
         }
         async function addStorageFolder() {
             const folderId = document.getElementById('new-folder-id').value.trim();
@@ -487,7 +544,11 @@
             if (!folderId) { showToast('請輸入資料夾 ID','error'); return; }
             const res = await callAPI('addStorageFolder', { userEmail: state.userEmail, folderId, folderName });
             showToast(res.message, res.success ? 'success' : 'error');
-            if (res.success) switchAdminTab('tab-storage');
+            if (res.success) {
+                document.getElementById('new-folder-id').value = '';
+                document.getElementById('new-folder-name').value = '';
+                switchAdminTab('tab-storage');
+            }
         }
 
         function handleLogout() {
@@ -498,6 +559,7 @@
         function goHome() {
             document.getElementById('videos-page').classList.remove('hidden');
             document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('search-input').value = '';
             loadVideos();
         }
     </script>
